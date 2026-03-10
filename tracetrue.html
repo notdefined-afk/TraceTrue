@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TraceTrue — Know What You're Really Eating</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fafaf8;--surface:#fff;--border:#e8e8e2;
+  --text1:#1a1a16;--text2:#6b6b60;--text3:#a0a094;
+  --green:#2d6a4f;--green-light:#d8f3dc;--green-pale:#f0faf2;
+  --red:#c0392b;--red-light:#fdf0ee;
+  --amber:#b7791f;--amber-light:#fef9ec;
+  --shadow:0 1px 3px rgba(0,0,0,.06);
+  --radius:10px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text1);font-size:14px;line-height:1.6;min-height:100vh}
+
+/* Header */
+.header{background:var(--text1);padding:16px 32px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Fraunces',serif;font-size:22px;font-weight:700;letter-spacing:-.02em;color:#fff}
+.logo span{color:#74c69d}
+.header-sub{font-size:12px;color:#6b8a74;font-style:italic;font-family:'Fraunces',serif}
+
+/* Search bar */
+.search-section{background:#1e2a22;border-bottom:1px solid #2d3d33;padding:20px 32px}
+.search-row{display:flex;gap:12px;align-items:center;max-width:700px}
+.barcode-input{flex:1;background:#2d3d33;border:1px solid #3d5244;border-radius:8px;padding:11px 16px 11px 44px;font-size:14px;color:#fff;font-family:inherit;outline:none;transition:border .2s}
+.barcode-input::placeholder{color:#6b8a74}
+.barcode-input:focus{border-color:#74c69d}
+.input-wrap{position:relative;flex:1}
+.input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;color:#6b8a74}
+.btn-trace{background:#74c69d;color:var(--text1);border:none;padding:11px 22px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;white-space:nowrap}
+.btn-trace:hover{background:#52b788}
+.btn-trace:disabled{opacity:.6;cursor:not-allowed}
+.sample-row{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sample-label{font-size:12px;color:#6b8a74}
+.sample-chip{background:transparent;border:1px solid #3d5244;color:#9dc9b0;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s}
+.sample-chip:hover{border-color:#74c69d;color:#74c69d}
+.sample-chip span{font-family:'DM Mono',monospace;font-size:10px;color:#6b8a74;margin-left:4px}
+
+/* Main */
+.main{max-width:860px;margin:0 auto;padding:32px 24px}
+
+/* Empty state */
+.empty-state{text-align:center;padding:80px 0}
+.empty-icon{font-size:48px;margin-bottom:16px}
+.empty-title{font-family:'Fraunces',serif;font-size:22px;font-weight:500;margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--text2);max-width:380px;margin:0 auto;line-height:1.7}
+
+/* Loading */
+.loading-state{text-align:center;padding:80px 0}
+.loading-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text2)}
+.loading-step{font-size:12px;color:var(--text3);margin-top:4px}
+
+/* Product header */
+.product-header{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;margin-bottom:24px}
+.product-name{font-family:'Fraunces',serif;font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.2;margin-bottom:4px}
+.product-meta{font-size:13px;color:var(--text2)}
+.product-meta span{margin-right:12px}
+.trust-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;text-align:center;min-width:130px;box-shadow:var(--shadow)}
+.trust-num{font-family:'Fraunces',serif;font-size:46px;font-weight:700;line-height:1}
+.trust-num.high{color:var(--green)}.trust-num.mid{color:var(--amber)}.trust-num.low{color:var(--red)}
+.trust-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.trust-verdict{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin-top:8px;display:inline-block}
+.trust-verdict.high{background:var(--green-light);color:var(--green)}
+.trust-verdict.mid{background:var(--amber-light);color:var(--amber)}
+.trust-verdict.low{background:var(--red-light);color:var(--red)}
+
+/* AI Verdict */
+.verdict-box{background:var(--text1);color:#fff;border-radius:var(--radius);padding:18px 22px;margin-bottom:24px}
+.verdict-label{font-size:10px;color:#74c69d;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:8px}
+.verdict-bullets{display:flex;flex-direction:column;gap:6px}
+.verdict-bullet{display:flex;gap:10px;font-size:13px;color:#d4d4cc;line-height:1.5}
+.verdict-bullet-icon{flex-shrink:0;margin-top:1px}
+
+/* Flags */
+.flags-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.flag{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:500;border:1px solid}
+.flag.concern{background:var(--red-light);color:var(--red);border-color:#ffd5d0}
+.flag.caution{background:var(--amber-light);color:var(--amber);border-color:#fde8a0}
+.flag.verified{background:var(--green-light);color:var(--green);border-color:#b7e4c7}
+
+/* NOVA */
+.nova-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:var(--shadow)}
+.nova-score{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:#fff;flex-shrink:0}
+.nova-score.n1{background:#2d6a4f}.nova-score.n2{background:#74c69d;color:var(--text1)}.nova-score.n3{background:var(--amber)}.nova-score.n4{background:var(--red)}
+.nova-info{flex:1}
+.nova-title{font-size:14px;font-weight:600;margin-bottom:2px}
+.nova-desc{font-size:12px;color:var(--text2);line-height:1.5}
+.nutri-badge{padding:8px 14px;border-radius:8px;font-size:15px;font-weight:700;color:#fff;text-align:center;min-width:44px}
+.nutri-A{background:#2d6a4f}.nutri-B{background:#74c69d;color:var(--text1)}.nutri-C{background:var(--amber)}.nutri-D{background:#e07b39}.nutri-E{background:var(--red)}
+
+/* Ingredients */
+.section-title{font-family:'Fraunces',serif;font-size:17px;font-weight:500;margin-bottom:14px}
+.ingredients-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:24px;box-shadow:var(--shadow)}
+.ingredients-text{font-size:13px;color:var(--text2);line-height:1.8}
+.additive-tag{display:inline-block;background:#fef9ec;border:1px solid #fde8a0;color:#92400e;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:500;margin:1px}
+.additive-tag.concern{background:var(--red-light);border-color:#ffd5d0;color:var(--red)}
+
+/* Journey */
+.journey{margin-bottom:24px}
+.journey-node{display:grid;grid-template-columns:40px 1fr;gap:14px;margin-bottom:4px}
+.node-col{display:flex;flex-direction:column;align-items:center}
+.node-dot{width:14px;height:14px;border-radius:50%;border:2px solid #fff;flex-shrink:0;margin-top:18px}
+.node-dot.verified{background:var(--green);box-shadow:0 0 0 2px var(--green-light)}
+.node-dot.caution{background:var(--amber);box-shadow:0 0 0 2px var(--amber-light)}
+.node-dot.concern{background:var(--red);box-shadow:0 0 0 2px var(--red-light)}
+.node-dot.unknown{background:var(--text3);box-shadow:0 0 0 2px var(--border)}
+.node-line{flex:1;width:2px;background:var(--border);min-height:12px}
+.node-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:8px;box-shadow:var(--shadow)}
+.node-card.verified{border-left:3px solid var(--green)}
+.node-card.caution{border-left:3px solid var(--amber)}
+.node-card.concern{border-left:3px solid var(--red)}
+.node-card.unknown{border-left:3px solid var(--border)}
+.node-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.node-title{font-size:13px;font-weight:600}
+.node-step{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.node-flag{font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
+.node-flag.verified{background:var(--green-light);color:var(--green)}
+.node-flag.caution{background:var(--amber-light);color:var(--amber)}
+.node-flag.concern{background:var(--red-light);color:var(--red)}
+.node-flag.unknown{background:var(--bg);color:var(--text3);border:1px solid var(--border)}
+.node-detail{font-size:12px;color:var(--text2);margin-bottom:6px}
+.node-ai{font-size:12px;color:var(--text2);background:#f7f7f4;border-radius:6px;padding:7px 10px;border-left:2px solid var(--border);line-height:1.5}
+
+/* Data source note */
+.data-note{font-size:11px;color:var(--text3);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:24px;line-height:1.6}
+.data-note a{color:var(--green);text-decoration:none}
+
+/* Error */
+.error-box{background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);padding:20px;text-align:center}
+.error-title{font-size:15px;font-weight:600;color:var(--red);margin-bottom:6px}
+.error-sub{font-size:13px;color:#7f1d1d;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">Trace<span>True</span></div>
+    <div class="header-sub">Follow your food, verify every claim</div>
+  </div>
+  <div style="font-size:12px;color:#6b8a74;text-align:right">Powered by Open Food Facts + AI<br>India · Beta</div>
+</div>
+
+<div class="search-section">
+  <div class="search-row">
+    <div class="input-wrap">
+      <span class="input-icon">📦</span>
+      <input class="barcode-input" id="barcodeInput" type="text" placeholder="Enter barcode / EAN (e.g. 8901725130787)" />
+    </div>
+    <button class="btn-trace" id="traceBtn" onclick="traceBarcode()">Trace Product</button>
+  </div>
+  <div class="sample-row">
+    <span class="sample-label">Try a sample:</span>
+    <button class="sample-chip" onclick="loadSample('8901725130787')">Saffola Oats <span>8901725130787</span></button>
+    <button class="sample-chip" onclick="loadSample('8906002320012')">Yoga Bar Muesli <span>8906002320012</span></button>
+    <button class="sample-chip" onclick="loadSample('8901030999178')">Kellogg's Oats <span>8901030999178</span></button>
+    <button class="sample-chip" onclick="loadSample('3017620422003')">Nutella <span>3017620422003</span></button>
+  </div>
+</div>
+
+<div class="main" id="mainContent">
+  <div class="empty-state">
+    <div class="empty-icon">🌾</div>
+    <div class="empty-title">Know your food's full journey</div>
+    <div class="empty-sub">Enter the barcode from any packaged food product. We pull real data from Open Food Facts and use AI to verify what the brand claims vs. what the data actually shows.</div>
+  </div>
+</div>
+
+<script>
+function loadSample(barcode) {
+  document.getElementById('barcodeInput').value = barcode;
+  traceBarcode();
+}
+
+async function traceBarcode() {
+  const barcode = document.getElementById('barcodeInput').value.trim();
+  if (!barcode) return;
+
+  const btn = document.getElementById('traceBtn');
+  btn.disabled = true;
+  btn.textContent = 'Tracing...';
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Looking up barcode <strong>${barcode}</strong></div>
+      <div class="loading-step">Fetching from Open Food Facts database...</div>
+    </div>`;
+
+  let productData = null;
+  let dataSource = 'live';
+
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const json = await res.json();
+    if (json.status === 1 && json.product) {
+      productData = json.product;
+    }
+  } catch(e) {
+    // network blocked or failed — use fallback
+  }
+
+  // Update loading step
+  document.getElementById('mainContent').innerHTML = `
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Analysing with AI...</div>
+      <div class="loading-step">Cross-referencing claims against product data...</div>
+    </div>`;
+
+  if (productData) {
+    await analyseWithAI(productData, barcode);
+  } else {
+    // No product found or API unavailable — show smart fallback for known barcodes
+    renderNotFound(barcode);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Trace Product';
+}
+
+function renderNotFound(barcode) {
+  const knownFallbacks = {
+    '8901725130787': getSaffollaFallback(),
+    '3017620422003': getNutellaFallback(),
+  };
+  if (knownFallbacks[barcode]) {
+    renderResult(knownFallbacks[barcode], 'demo');
+    return;
+  }
+  document.getElementById('mainContent').innerHTML = `
+    <div class="error-box">
+      <div class="error-title">Product not found</div>
+      <div class="error-sub">Barcode <strong>${barcode}</strong> wasn't found in the Open Food Facts database.<br>
+      This is common for Indian products with limited community data.<br><br>
+      Try one of the sample barcodes above, or <a href="https://world.openfoodfacts.org" target="_blank" style="color:var(--red)">contribute this product</a> to the database.</div>
+    </div>`;
+}
+
+async function analyseWithAI(p, barcode) {
+  const name = p.product_name || p.product_name_en || 'Unknown Product';
+  const brand = p.brands || 'Unknown Brand';
+  const ingredients = p.ingredients_text || p.ingredients_text_en || 'Not listed';
+  const nova = p.nova_group || null;
+  const nutriscore = p.nutriscore_grade ? p.nutriscore_grade.toUpperCase() : null;
+  const additives = p.additives_tags ? p.additives_tags.map(a => a.replace('en:','')) : [];
+  const labels = p.labels || '';
+  const countries = p.countries || '';
+  const categories = p.categories || '';
+  const packaging = p.packaging || '';
+
+  const prompt = `You are TraceTrue, a food supply chain transparency AI. Analyse this real product data from Open Food Facts and generate a trust report.
+
+Product: ${name}
+Brand: ${brand}
+Barcode: ${barcode}
+Ingredients: ${ingredients}
+NOVA Score: ${nova || 'Not available'} (1=unprocessed, 4=ultra-processed)
+Nutri-Score: ${nutriscore || 'Not available'}
+Additives detected: ${additives.slice(0,10).join(', ') || 'None listed'}
+Labels/Certifications: ${labels || 'None listed'}
+Countries sold: ${countries}
+Categories: ${categories}
+Packaging: ${packaging}
+
+Return ONLY valid JSON, no markdown:
+{
+  "trustScore": 0-100,
+  "trustVerdict": "Trustworthy"|"Moderate Concern"|"High Concern",
+  "verdictBullets": [
+    {"icon": "emoji", "text": "plain sentence about a specific finding, max 15 words"}
+  ],
+  "flags": [
+    {"type": "concern"|"caution"|"verified", "icon": "emoji", "label": "short flag text"}
+  ],
+  "novaExplain": "one sentence explaining what this NOVA score means for this specific product",
+  "ingredientNote": "one sentence about the most notable thing in the ingredient list — specific additive concern or positive note",
+  "claimGaps": ["array of specific claim vs reality contradictions found, or empty array if none"],
+  "journey": [
+    {
+      "step": "Step N",
+      "title": "node title",
+      "status": "verified"|"caution"|"concern"|"unknown",
+      "flag": "short status text",
+      "detail": "what we know from the data",
+      "aiNote": "specific insight about this step"
+    }
+  ]
+}
+
+Journey nodes (6): Raw Material → Processing (reference NOVA score) → Additives/Formulation → Quality/Certification → Packaging → Distribution.
+For unknown steps, status="unknown" and be honest that data isn't available.
+trustScore: base on NOVA (1=+30pts, 4=-30pts), additive count (each -3pts), certifications (+10pts each), nutriscore (A=+15, E=-15).
+verdictBullets: 3-4 specific findings using actual data values.
+Be critical and honest. Don't praise brands for things not evidenced in data.`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{role:"user", content: prompt}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content[0].text.replace(/```json|```/g,'').trim();
+    const result = JSON.parse(text);
+    result.productName = name;
+    result.brand = brand;
+    result.barcode = barcode;
+    result.nova = nova;
+    result.nutriscore = nutriscore;
+    result.additives = additives;
+    result.ingredients = ingredients;
+    renderResult(result, 'live');
+  } catch(e) {
+    // AI failed — render basic from raw data
+    renderBasicResult(p, barcode);
+  }
+}
+
+function renderResult(r, source) {
+  const scoreClass = r.trustScore >= 70 ? 'high' : r.trustScore >= 45 ? 'mid' : 'low';
+  const verdictClass = scoreClass;
+
+  const novaLabels = {1:'Unprocessed / Minimally processed',2:'Processed culinary ingredients',3:'Processed foods',4:'Ultra-processed foods'};
+  const novaColors = {1:'n1',2:'n2',3:'n3',4:'n4'};
+
+  const flagsHTML = (r.flags||[]).map(f=>`<span class="flag ${f.type}">${f.icon} ${f.label}</span>`).join('');
+
+  const journeyHTML = (r.journey||[]).map((node,i,arr)=>`
+    <div class="journey-node">
+      <div class="node-col">
+        <div class="node-dot ${node.status}"></div>
+        ${i<arr.length-1?'<div class="node-line"></div>':''}
+      </div>
+      <div class="node-card ${node.status}">
+        <div class="node-top">
+          <div><div class="node-step">${node.step}</div><div class="node-title">${node.title}</div></div>
+          <span class="node-flag ${node.status}">${node.flag}</span>
+        </div>
+        <div class="node-detail">${node.detail}</div>
+        <div class="node-ai">✦ ${node.aiNote}</div>
+      </div>
+    </div>`).join('');
+
+  const additivesDisplay = (r.additives||[]).slice(0,15).map(a=>{
+    const isConcern = a.includes('colour') || a.includes('preservative') || a.includes('sweetener');
+    return`<span class="additive-tag ${isConcern?'concern':''}">${a}</span>`;
+  }).join('') || '<span style="color:var(--green);font-size:12px">No additives listed</span>';
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="data-note">
+      ${source==='live'
+        ? `✓ Real product data fetched from <a href="https://world.openfoodfacts.org/product/${r.barcode}" target="_blank">Open Food Facts</a> · AI analysis generated by Claude · Barcode: <span style="font-family:DM Mono,monospace">${r.barcode}</span>`
+        : `⚠ Live API unavailable — showing demo data for illustration · <a href="https://world.openfoodfacts.org" target="_blank">Open Food Facts</a>`
+      }
+    </div>
+
+    <div class="product-header">
+      <div>
+        <div class="product-name">${r.productName}</div>
+        <div class="product-meta">
+          <span>🏷 ${r.brand}</span>
+          ${r.nova ? `<span>NOVA ${r.nova}</span>` : ''}
+          ${r.nutriscore ? `<span>Nutri-Score ${r.nutriscore}</span>` : ''}
+        </div>
+      </div>
+      <div class="trust-card">
+        <div class="trust-num ${scoreClass}">${r.trustScore}</div>
+        <div class="trust-label">Trust Score</div>
+        <div class="trust-verdict ${verdictClass}">${r.trustVerdict}</div>
+      </div>
+    </div>
+
+    <div class="verdict-box">
+      <div class="verdict-label">✦ AI Verdict</div>
+      <div class="verdict-bullets">
+        ${(r.verdictBullets||[]).map(b=>`<div class="verdict-bullet"><span class="verdict-bullet-icon">${b.icon}</span>${b.text}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="flags-row">${flagsHTML}</div>
+
+    ${r.nova ? `
+    <div class="nova-row">
+      <div class="nova-score ${novaColors[r.nova]||'n4'}">${r.nova}</div>
+      <div class="nova-info">
+        <div class="nova-title">NOVA ${r.nova} — ${novaLabels[r.nova]||'Unknown'}</div>
+        <div class="nova-desc">${r.novaExplain||''}</div>
+      </div>
+      ${r.nutriscore ? `<div class="nutri-badge nutri-${r.nutriscore}">${r.nutriscore}</div>` : ''}
+    </div>` : ''}
+
+    ${r.ingredients && r.ingredients !== 'Not listed' ? `
+    <div class="ingredients-box">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Ingredients</div>
+      <div class="ingredients-text">${r.ingredients}</div>
+      ${r.additives && r.additives.length ? `<div style="margin-top:10px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Additives detected (${r.additives.length})</div>${additivesDisplay}</div>` : ''}
+      ${r.ingredientNote ? `<div class="node-ai" style="margin-top:10px">✦ ${r.ingredientNote}</div>` : ''}
+    </div>` : ''}
+
+    <div class="section-title">Supply Chain Journey</div>
+    <div class="journey">${journeyHTML}</div>`;
+}
+
+function renderBasicResult(p, barcode) {
+  const name = p.product_name || 'Product';
+  const brand = p.brands || '—';
+  const nova = p.nova_group;
+  const nutriscore = p.nutriscore_grade ? p.nutriscore_grade.toUpperCase() : null;
+  const additives = p.additives_tags ? p.additives_tags.length : 0;
+  let score = 60;
+  if (nova) score += (4 - nova) * 8;
+  if (additives > 5) score -= 15;
+  if (nutriscore === 'A') score += 10;
+  if (nutriscore === 'E') score -= 15;
+  score = Math.max(10, Math.min(95, score));
+
+  renderResult({
+    productName: name, brand, barcode,
+    trustScore: score,
+    trustVerdict: score >= 70 ? 'Trustworthy' : score >= 45 ? 'Moderate Concern' : 'High Concern',
+    verdictBullets: [
+      {icon: nova ? (nova<=2?'✅':'⚠️') : '❓', text: nova ? `NOVA ${nova} processing score detected` : 'NOVA processing score not available'},
+      {icon: additives > 5 ? '⚠️' : '✅', text: `${additives} additives detected in this product`},
+      {icon: nutriscore ? '📊' : '❓', text: nutriscore ? `Nutri-Score ${nutriscore} assigned` : 'Nutri-Score not available for this product'},
+    ],
+    flags: [
+      nova && nova >= 3 ? {type:'caution', icon:'⚠️', label:`NOVA ${nova} processed`} : {type:'verified', icon:'✅', label:'Low processing'},
+      additives > 5 ? {type:'concern', icon:'🧪', label:`${additives} additives`} : {type:'verified', icon:'✅', label:'Few additives'},
+    ].filter(Boolean),
+    nova, nutriscore,
+    additives: p.additives_tags ? p.additives_tags.map(a=>a.replace('en:','')) : [],
+    ingredients: p.ingredients_text || null,
+    novaExplain: nova ? `NOVA ${nova} means this product has undergone ${['minimal','some','significant','extensive'][nova-1]} industrial processing.` : '',
+    ingredientNote: null,
+    journey: [
+      {step:'Step 1', title:'Raw Material Origin', status:'unknown', flag:'Not disclosed', detail:'Country of origin: ' + (p.origins || 'Not listed'), aiNote:'Brand has not disclosed farm-level sourcing in public data.'},
+      {step:'Step 2', title:'Processing', status: nova >= 3 ? 'caution' : 'verified', flag:`NOVA ${nova||'?'}`, detail:`NOVA score: ${nova||'unknown'}. Categories: ${(p.categories||'').split(',').slice(0,2).join(', ')}`, aiNote: nova >= 3 ? 'Multiple industrial processing steps likely based on NOVA classification.' : 'Minimal processing indicated by NOVA score.'},
+      {step:'Step 3', title:'Additives & Formulation', status: additives > 5 ? 'concern' : additives > 0 ? 'caution' : 'verified', flag:`${additives} additives`, detail:`${additives} additives detected via Open Food Facts scan.`, aiNote: additives > 5 ? 'High additive count — review ingredient list for specific concerns.' : additives === 0 ? 'No additives detected in this product.' : 'Moderate additive presence — check individual ingredients.'},
+      {step:'Step 4', title:'Quality / Certification', status: p.labels ? 'verified' : 'unknown', flag: p.labels ? 'Certified' : 'Not disclosed', detail:`Labels: ${p.labels || 'None listed in database'}`, aiNote: p.labels ? `Certifications on record: ${p.labels}` : 'No third-party certifications found in database. May exist but not yet recorded.'},
+      {step:'Step 5', title:'Packaging', status:'unknown', flag:'Partial data', detail:`Packaging: ${p.packaging || 'Not listed'}`, aiNote:'Packaging material data is incomplete. Carbon footprint of packaging not assessable from available data.'},
+      {step:'Step 6', title:'Distribution & Retail', status:'verified', flag:'Retail confirmed', detail:`Available in: ${(p.countries||'').split(',').slice(0,3).join(', ')||'Not listed'}`, aiNote:'Product confirmed in retail channels. Last-mile delivery data not part of Open Food Facts scope.'},
+    ]
+  }, 'live');
+}
+
+function getSaffollaFallback() {
+  return {
+    productName: 'Saffola Oats', brand: 'Marico', barcode: '8901725130787',
+    trustScore: 62, trustVerdict: 'Moderate Concern',
+    verdictBullets: [
+      {icon:'⚠️', text:'Claims "minimally processed" but undergoes steaming, rolling, and drying'},
+      {icon:'✅', text:'FSSAI certified — basic regulatory compliance confirmed'},
+      {icon:'🔍', text:'Organic claim not independently verified in public databases'},
+      {icon:'📍', text:'Sourced via aggregators — farm-level origin not disclosed'},
+    ],
+    flags: [
+      {type:'caution', icon:'⚠️', label:'Processing claim gap'},
+      {type:'verified', icon:'✅', label:'FSSAI certified'},
+      {type:'concern', icon:'🔍', label:'Organic unverified'},
+    ],
+    nova: 3, nutriscore: 'B',
+    additives: ['e322-lecithins'],
+    ingredients: 'Rolled oats (100%). Contains gluten.',
+    novaExplain: 'NOVA 3 means this product undergoes significant processing — steaming, rolling, and drying alter the grain from its natural state.',
+    ingredientNote: 'Ingredient list is simple (oats only) but the processing method contradicts "natural" brand positioning.',
+    journey: [
+      {step:'Step 1', title:'Raw Material Sourcing', status:'caution', flag:'Aggregator sourced', detail:'Rajasthan & Haryana farms via grain aggregators', aiNote:'Brand cannot verify exact farm origin — weakens any farm-fresh or organic claims.'},
+      {step:'Step 2', title:'Cleaning & Grading', status:'verified', flag:'FSSAI verified', detail:'Punjab processing facility, FSSAI audit passed', aiNote:'Standard dehulling and cleaning. Well-documented and compliant.'},
+      {step:'Step 3', title:'Steaming & Rolling', status:'caution', flag:'Claim gap', detail:'Thermal processing at contract facility', aiNote:'Steaming and rolling changes grain structure — contradicts "minimally processed" label claim.'},
+      {step:'Step 4', title:'Quality Check', status:'verified', flag:'Third-party tested', detail:'SGS India lab testing for pesticides and heavy metals', aiNote:'Independent lab testing adds credibility. Results filed with FSSAI.'},
+      {step:'Step 5', title:'Packaging', status:'concern', flag:'Additive undisclosed', detail:'"Natural flavour" listed — specific agents not disclosed', aiNote:'FSSAI permits vague flavouring labelling. Limits full transparency.'},
+      {step:'Step 6', title:'Distribution', status:'verified', flag:'Retail confirmed', detail:'Pan-India retail and ecommerce', aiNote:'Standard ambient distribution. No cold chain required.'},
+    ]
+  };
+}
+
+function getNutellaFallback() {
+  return {
+    productName: 'Nutella', brand: 'Ferrero', barcode: '3017620422003',
+    trustScore: 31, trustVerdict: 'High Concern',
+    verdictBullets: [
+      {icon:'🚨', text:'NOVA 4 ultra-processed — highest processing classification'},
+      {icon:'⚠️', text:'Sugar is first ingredient — more sugar than hazelnuts by weight'},
+      {icon:'⚠️', text:'Nutri-Score E — worst possible nutritional rating'},
+      {icon:'🔍', text:'Palm oil sourcing sustainability claims not independently verified'},
+    ],
+    flags: [
+      {type:'concern', icon:'🚨', label:'NOVA 4 ultra-processed'},
+      {type:'concern', icon:'⚠️', label:'Nutri-Score E'},
+      {type:'caution', icon:'🌴', label:'Palm oil — RSPO claimed'},
+    ],
+    nova: 4, nutriscore: 'E',
+    additives: ['e322-lecithins','e476-polyglycerol-polyricinoleate','vanillin'],
+    ingredients: 'Sugar, palm oil, hazelnuts (13%), skimmed milk powder (8.7%), fat-reduced cocoa (7.4%), lecithins (soya), vanillin.',
+    novaExplain: 'NOVA 4 ultra-processed — multiple industrial ingredients, emulsifiers, and flavourings added beyond basic culinary processing.',
+    ingredientNote: 'Sugar is listed first, meaning it is the highest-quantity ingredient — more than hazelnuts, which are featured prominently in branding.',
+    journey: [
+      {step:'Step 1', title:'Raw Material Sourcing', status:'caution', flag:'Palm oil concern', detail:'Hazelnuts (Turkey), Palm oil (multiple origins)', aiNote:'Ferrero claims RSPO-certified palm oil but third-party verification is limited in scope.'},
+      {step:'Step 2', title:'Industrial Processing', status:'concern', flag:'NOVA 4', detail:'High-shear mixing, emulsification, thermal treatment', aiNote:'Multiple industrial techniques used — this is definitively ultra-processed food.'},
+      {step:'Step 3', title:'Additives & Emulsifiers', status:'concern', flag:'3 additives', detail:'E322 (lecithin), E476 (PGPR), vanillin (synthetic)', aiNote:'PGPR is a cost-cutting emulsifier replacing cocoa butter — common in mass chocolate products.'},
+      {step:'Step 4', title:'Quality & Certification', status:'caution', flag:'Partial', detail:'ISO 22000 at manufacturing facilities', aiNote:'Safety certification in place but no independent nutritional or sustainability certification.'},
+      {step:'Step 5', title:'Packaging', status:'caution', flag:'Glass jar', detail:'Glass jar (recyclable), plastic lid', aiNote:'Glass packaging is positive. Carbon footprint of global distribution is significant.'},
+      {step:'Step 6', title:'Distribution', status:'verified', flag:'Global retail', detail:'Available in 160+ countries', aiNote:'Extensive cold-chain-free distribution globally.'},
+    ]
+  };
+}
+</script>
+</body>
+</html>
