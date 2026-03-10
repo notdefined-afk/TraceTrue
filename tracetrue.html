@@ -26,7 +26,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text1);fo
 
 /* Search bar */
 .search-section{background:#1e2a22;border-bottom:1px solid #2d3d33;padding:20px 32px}
+.mode-tabs{display:flex;gap:4px;background:#162118;padding:3px;border-radius:7px;width:fit-content;margin-bottom:14px}
+.mode-tab{padding:5px 14px;border-radius:5px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;color:#6b8a74;transition:all .15s;font-family:inherit}
+.mode-tab.active{background:#2d3d33;color:#9dc9b0}
 .search-row{display:flex;gap:12px;align-items:center;max-width:700px}
+.search-results-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1e2a22;border:1px solid #3d5244;border-radius:8px;z-index:50;overflow:hidden;max-height:260px;overflow-y:auto;display:none}
+.search-results-dropdown.visible{display:block}
+.search-result-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid #2d3d33;transition:background .1s}
+.search-result-item:last-child{border-bottom:none}
+.search-result-item:hover{background:#2d3d33}
+.sri-name{font-size:13px;color:#c8e6c9;font-weight:500}
+.sri-meta{font-size:11px;color:#6b8a74;margin-top:2px;font-family:'DM Mono',monospace}
+.search-result-item.loading-item{color:#6b8a74;font-size:12px;font-style:italic;text-align:center;padding:14px}
+.search-result-item.no-results{color:#6b8a74;font-size:12px;text-align:center;padding:14px}
 .barcode-input{flex:1;background:#2d3d33;border:1px solid #3d5244;border-radius:8px;padding:11px 16px 11px 44px;font-size:14px;color:#fff;font-family:inherit;outline:none;transition:border .2s}
 .barcode-input::placeholder{color:#6b8a74}
 .barcode-input:focus{border-color:#74c69d}
@@ -149,19 +161,46 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text1);fo
 </div>
 
 <div class="search-section">
-  <div class="search-row">
-    <div class="input-wrap">
-      <span class="input-icon">📦</span>
-      <input class="barcode-input" id="barcodeInput" type="text" placeholder="Enter barcode / EAN (e.g. 8901725130787)" />
-    </div>
-    <button class="btn-trace" id="traceBtn" onclick="traceBarcode()">Trace Product</button>
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tabBarcode" onclick="switchMode('barcode')">📦 Barcode</button>
+    <button class="mode-tab" id="tabName" onclick="switchMode('name')">🔍 Search by Name</button>
   </div>
-  <div class="sample-row">
-    <span class="sample-label">Try a sample:</span>
-    <button class="sample-chip" onclick="loadSample('8901725130787')">Saffola Oats <span>8901725130787</span></button>
-    <button class="sample-chip" onclick="loadSample('8906002320012')">Yoga Bar Muesli <span>8906002320012</span></button>
-    <button class="sample-chip" onclick="loadSample('8901030999178')">Kellogg's Oats <span>8901030999178</span></button>
-    <button class="sample-chip" onclick="loadSample('3017620422003')">Nutella <span>3017620422003</span></button>
+
+  <!-- Barcode mode -->
+  <div id="barcodeMode">
+    <div class="search-row">
+      <div class="input-wrap">
+        <span class="input-icon">📦</span>
+        <input class="barcode-input" id="barcodeInput" type="text" placeholder="Enter barcode / EAN (e.g. 8901725130787)" onkeydown="if(event.key==='Enter')traceBarcode()" />
+      </div>
+      <button class="btn-trace" id="traceBtn" onclick="traceBarcode()">Trace Product</button>
+    </div>
+    <div class="sample-row">
+      <span class="sample-label">Try a sample:</span>
+      <button class="sample-chip" onclick="loadSample('8901725130787')">Saffola Oats <span>8901725130787</span></button>
+      <button class="sample-chip" onclick="loadSample('8901088068734')">Saffola Masala Oats <span>8901088068734</span></button>
+      <button class="sample-chip" onclick="loadSample('8901058891416')">Maggi Noodles <span>8901058891416</span></button>
+      <button class="sample-chip" onclick="loadSample('3017620422003')">Nutella <span>3017620422003</span></button>
+    </div>
+  </div>
+
+  <!-- Name search mode -->
+  <div id="nameMode" style="display:none">
+    <div class="search-row">
+      <div class="input-wrap">
+        <span class="input-icon">🔍</span>
+        <input class="barcode-input" id="nameInput" type="text" placeholder="Search product name (e.g. Saffola oats, Maggi, Amul butter)" oninput="onNameInput()" onkeydown="if(event.key==='Enter')searchByName()" />
+        <div class="search-results-dropdown" id="nameDropdown"></div>
+      </div>
+      <button class="btn-trace" onclick="searchByName()">Search</button>
+    </div>
+    <div class="sample-row">
+      <span class="sample-label">Try:</span>
+      <button class="sample-chip" onclick="quickSearch('saffola oats')">saffola oats</button>
+      <button class="sample-chip" onclick="quickSearch('maggi noodles')">maggi noodles</button>
+      <button class="sample-chip" onclick="quickSearch('amul butter')">amul butter</button>
+      <button class="sample-chip" onclick="quickSearch('nutella')">nutella</button>
+    </div>
   </div>
 </div>
 
@@ -174,6 +213,80 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text1);fo
 </div>
 
 <script>
+// ── Mode switching ──
+function switchMode(mode) {
+  const isBarcode = mode === 'barcode';
+  document.getElementById('barcodeMode').style.display = isBarcode ? 'block' : 'none';
+  document.getElementById('nameMode').style.display = isBarcode ? 'none' : 'block';
+  document.getElementById('tabBarcode').classList.toggle('active', isBarcode);
+  document.getElementById('tabName').classList.toggle('active', !isBarcode);
+  if (!isBarcode) document.getElementById('nameInput').focus();
+}
+
+// ── Product name search ──
+let searchTimer = null;
+
+function quickSearch(q) {
+  document.getElementById('nameInput').value = q;
+  searchByName();
+}
+
+function onNameInput() {
+  clearTimeout(searchTimer);
+  const q = document.getElementById('nameInput').value.trim();
+  if (q.length < 2) { closeDropdown(); return; }
+  searchTimer = setTimeout(() => fetchNameResults(q), 400);
+}
+
+async function fetchNameResults(q) {
+  const dropdown = document.getElementById('nameDropdown');
+  dropdown.innerHTML = '<div class="search-result-item loading-item">Searching Open Food Facts...</div>';
+  dropdown.classList.add('visible');
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=8&fields=code,product_name,brands,image_small_url`);
+    const data = await res.json();
+    const products = (data.products || []).filter(p => p.code && p.product_name);
+    if (!products.length) {
+      dropdown.innerHTML = '<div class="search-result-item no-results">No products found. Try a different name.</div>';
+      return;
+    }
+    dropdown.innerHTML = products.map(p => `
+      <div class="search-result-item" onclick="selectProduct('${p.code}','${(p.product_name||'').replace(/'/g,"\\'")}')">
+        <div class="sri-name">${p.product_name}</div>
+        <div class="sri-meta">${p.brands || 'Unknown brand'} · ${p.code}</div>
+      </div>`).join('');
+  } catch(e) {
+    dropdown.innerHTML = '<div class="search-result-item no-results">Search failed. Try entering the barcode directly.</div>';
+  }
+}
+
+function selectProduct(barcode, name) {
+  closeDropdown();
+  document.getElementById('nameInput').value = name;
+  // Switch to barcode mode and trace
+  document.getElementById('barcodeInput').value = barcode;
+  switchMode('barcode');
+  traceBarcode();
+}
+
+async function searchByName() {
+  const q = document.getElementById('nameInput').value.trim();
+  if (!q) return;
+  closeDropdown();
+  // Show results in dropdown for user to pick
+  await fetchNameResults(q);
+}
+
+function closeDropdown() {
+  const d = document.getElementById('nameDropdown');
+  if (d) { d.classList.remove('visible'); d.innerHTML = ''; }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#nameMode')) closeDropdown();
+});
+
+// ── Barcode samples ──
 function loadSample(barcode) {
   document.getElementById('barcodeInput').value = barcode;
   traceBarcode();
@@ -410,6 +523,7 @@ function renderResult(r, source) {
     </div>` : ''}
 
     <div class="section-title">Supply Chain Journey</div>
+    <div style="font-size:11px;color:#6b8a74;background:#162118;border:1px solid #2d3d33;border-radius:6px;padding:8px 12px;margin-bottom:14px;line-height:1.5">⚠️ <strong style="color:#9dc9b0">AI-reconstructed from ingredient data only.</strong> Farm origins, processing facilities, and logistics routes are not real provenance data — this is an illustrative interpretation of what the ingredient list implies.</div>
     <div class="journey">${journeyHTML}</div>`;
 }
 
